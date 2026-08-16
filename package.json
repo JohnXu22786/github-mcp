@@ -1,0 +1,47 @@
+{
+  "name": "repogate",
+  "version": "1.0.0",
+  "description": "面向 agent 的 GitHub 工作台：仓库、issue、PR 与代码审查的读写工具集，以 MCP stdio server 形式运行，零运行时依赖，可被 dsh 等插件化 harness 加载",
+  "type": "module",
+  "main": "src/entry.js",
+  "bin": {
+    "repogate": "src/entry.js"
+  },
+  "exports": {
+    ".": "./src/entry.js",
+    "./bridge": "./src/bridge/plugin.js",
+    "./client": "./src/bridge/client.js"
+  },
+  "files": [
+    "src",
+    "cordis.patch.yml",
+    "manifest.json",
+    "README.md",
+    "LICENSE",
+    "examples"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "test": "node --test",
+    "start": "node src/entry.js"
+  },
+  "keywords": [
+    "mcp",
+    "github",
+    "dsh",
+    "plugin",
+    "agent",
+    "tools",
+    "issue",
+    "pull-request",
+    "code-review"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

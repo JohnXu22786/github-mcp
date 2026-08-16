@@ -1,0 +1,71 @@
+{
+  "name": "repogate",
+  "version": "1.0.0",
+  "description": "GitHub 开发者工作台：为 agent 提供仓库 / issue / PR / 代码审查 / 搜索的读写能力",
+  "kind": "mcp-stdio",
+  "entry": "src/entry.js",
+  "runtime": {
+    "engine": "node",
+    "version": ">=18.17",
+    "dependencies": "none（零运行时依赖）"
+  },
+  "transport": {
+    "type": "stdio",
+    "framing": "按行分隔的 JSON-RPC 2.0 消息",
+    "protocol": "Model Context Protocol（initialize / tools/list / tools/call / ping）",
+    "protocolVersions": ["2025-06-18", "2025-03-26", "2024-11-05"]
+  },
+  "capabilities": ["tools"],
+  "tools": [
+    { "name": "gh_repo_fetch", "mutating": false, "description": "获取仓库详情" },
+    { "name": "gh_repo_browse", "mutating": false, "description": "按归属列出仓库" },
+    { "name": "gh_issue_open", "mutating": true, "description": "创建 issue" },
+    { "name": "gh_issue_fetch", "mutating": false, "description": "查看 issue 详情" },
+    { "name": "gh_issue_browse", "mutating": false, "description": "浏览/筛选 issue" },
+    { "name": "gh_issue_edit", "mutating": true, "description": "更新 issue" },
+    { "name": "gh_issue_respond", "mutating": true, "description": "发表评论" },
+    { "name": "gh_pr_open", "mutating": true, "description": "创建拉取请求" },
+    { "name": "gh_pr_fetch", "mutating": false, "description": "查看 PR 详情" },
+    { "name": "gh_pr_browse", "mutating": false, "description": "浏览/筛选 PR" },
+    { "name": "gh_pr_edit", "mutating": true, "description": "更新 PR 信息" },
+    { "name": "gh_pr_merge", "mutating": true, "description": "合并 PR" },
+    { "name": "gh_review_submit", "mutating": true, "description": "提交整体审查结论" },
+    { "name": "gh_review_comment", "mutating": true, "description": "PR diff 行级评论" },
+    { "name": "gh_review_fetch", "mutating": false, "description": "列出行级评论" },
+    { "name": "gh_review_browse", "mutating": false, "description": "列出整体审查记录" },
+    { "name": "gh_search_repos", "mutating": false, "description": "搜索仓库" },
+    { "name": "gh_search_issues", "mutating": false, "description": "搜索 issue/PR" },
+    { "name": "gh_search_code", "mutating": false, "description": "搜索代码" },
+    { "name": "gh_whoami", "mutating": false, "description": "当前身份与配额" },
+    { "name": "gh_auth_login", "mutating": false, "description": "发起 OAuth 设备授权" },
+    { "name": "gh_auth_check", "mutating": false, "description": "轮询授权结果" },
+    { "name": "gh_auth_logout", "mutating": false, "description": "清除本地令牌缓存" }
+  ],
+  "config": {
+    "configFile": "repogate.config.json（由 --config / REPOGATE_CONFIG 指定）",
+    "envVars": [
+      "REPOGATE_TOKEN（兼容 GITHUB_TOKEN / GH_TOKEN）",
+      "REPOGATE_READ_ONLY",
+      "REPOGATE_BASE_URL",
+      "REPOGATE_TIMEOUT_MS",
+      "REPOGATE_OAUTH_CLIENT_ID",
+      "REPOGATE_TOKEN_FILE",
+      "REPOGATE_CONFIG",
+      "REPOGATE_DEBUG"
+    ],
+    "flags": ["--token", "--read-only", "--base-url", "--timeout-ms", "--oauth-client-id", "--token-file", "--debug", "--version", "--help", "--config"]
+  },
+  "integration": {
+    "dsh": {
+      "mechanism": "bundle（package.json 的 dsh.bundle.patch 指向 cordis.patch.yml）",
+      "loading": "dsh 把 bundle 的 patch 行并入配置树；'repogate/bridge' 插件在 harness 进程内 spawn 本 server，握手后把工具注册到 ctx.tools",
+      "toolNames": "mcp__repogate__<工具名>",
+      "officialAlternative": "使用 @deepseek-ai/dsh-mcp-client 配置行直接连接本 server"
+    },
+    "genericMcpClient": {
+      "command": "node",
+      "args": ["<本目录>/src/entry.js"],
+      "env": { "REPOGATE_TOKEN": "<令牌>" }
+    }
+  }
+}

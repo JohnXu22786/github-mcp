@@ -1,0 +1,18 @@
+# repogate 的 dsh 接入层。
+# 本 bundle 被安装进 profile 后，这一行会把 repogate 的 MCP server
+# 以子进程方式拉起，并把全部工具注册进 dsh 的工具注册表，
+# 模型侧工具名为 mcp__repogate__<工具名>（例如 mcp__repogate__gh_issue_fetch）。
+#
+# 默认行为：子进程继承 dsh 进程的环境变量（REPOGATE_TOKEN / GITHUB_TOKEN 等），
+# 开箱即用。需要显式传令牌或开启只读模式时，取消对应注释并填写：
+- insert:
+    - id: repogate-mcp
+      name: 'repogate/bridge'
+      config:
+        serverName: repogate
+        # 透传给 server 的启动参数（可选）：
+        # args: ['--read-only']
+        # 追加到子进程环境的变量（可选；不填则继承宿主环境）：
+        # env:
+        #   REPOGATE_TOKEN: 'ghp_你的令牌'
+        #   REPOGATE_BASE_URL: 'https://api.github.com'

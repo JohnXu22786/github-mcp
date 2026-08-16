@@ -1,0 +1,21 @@
+# 供 dsh 的 profile / home 级 cordis.patch.yml 使用的官方桥接行模板。
+# 与 bundle 内置的 'repogate/bridge' 行二选一；两者工具名相同（mcp__repogate__*）。
+#
+# 用法：把下面的行插入到 $DSH_HOME/profiles/<profile>/cordis.patch.yml
+# （或 --patch 覆盖文件）的数组顶部，然后重启 dsh。
+- insert:
+    - id: mcp-repogate
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: repogate
+        transport: stdio
+        command: node
+        # 换成实际路径（可从本插件 checkout 目录运行 pwd 得到）
+        args: ['D:/path/to/github-mcp/src/entry.js']
+        # dsh 会从子进程环境过滤凭据类变量，令牌请在此显式传入：
+        env:
+          REPOGATE_TOKEN: !!js process.env.REPOGATE_TOKEN ?? process.env.GITHUB_TOKEN ?? ''
+        # 需要只读模式时加上：
+        # args: ['D:/path/to/github-mcp/src/entry.js', '--read-only']
+        toolCallTimeoutMs: 60000
+        failOnStartupError: true

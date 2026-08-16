@@ -1,0 +1,11 @@
+{
+  "token": "ghp_替换为你的令牌",
+  "baseUrl": "https://api.github.com",
+  "readOnly": false,
+  "timeoutMs": 30000,
+  "debug": false,
+  "oauth": {
+    "clientId": "Iv1.替换为你的GitHubAppClientID",
+    "tokenFile": "C:\\Users\\你的用户名\\.repogate\\token.json"
+  }
+}
