@@ -1,4 +1,6 @@
-﻿# repogate — GitHub 开发者工作台（agent 工具集）
+﻿[English](README.en.md)
+
+# repogate — GitHub 开发者工作台（agent 工具集）
 
 `repogate` 是一个面向编码 agent 的 GitHub 工作台：它把 GitHub REST API 封装成一组
 MCP（Model Context Protocol）工具，让 agent 直接在对话中完成**仓库查询、issue 管理、
@@ -65,7 +67,17 @@ dsh plugin --profile web add .
 `mcp__repogate__gh_issue_edit` → `mcp__repogate__gh_issue_respond`。
 
 > 备注：dsh 默认不启用任何 MCP 服务器（每条 server 命令都是在沙箱之外执行的受信代码），
-> 本插件的 bundle 行即“启用”动作本身；请只安装可信的插件。
+> 本插件的 bundle 行即"启用"动作本身；请只安装可信的插件。
+
+---
+
+## 在 DSH 中安装
+
+```bash
+dsh plugin --profile demo add github:JohnXu22786/github-mcp
+```
+
+一行命令即可从 GitHub 仓库安装本插件到 dsh 的 `demo` profile，之后的接入、认证与生命周期细节见下节「dsh 接入说明」。
 
 ---
 
@@ -271,4 +283,10 @@ OAuth 状态机全路径（含过期）、配置优先级、参数校验、只�
 - 令牌等同账号权限，请勿写入日志、提交版本库或泄露给不可信对话；
 - dsh 场景下，MCP server 命令属于沙箱之外的受信代码，请从可信来源安装本插件；
 - 只读模式可显著降低误操作风险，仅供调研的会话建议开启。
+
+---
+
+## 许可
+
+[MIT](LICENSE)
 
