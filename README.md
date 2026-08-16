@@ -1,35 +1,32 @@
-﻿[English](README.en.md)
+[简体中文](README.zh.md)
 
-# repogate — GitHub 开发者工作台（agent 工具集）
+# repogate — GitHub Developer Workbench (agent tool set)
 
-`repogate` 是一个面向编码 agent 的 GitHub 工作台：它把 GitHub REST API 封装成一组
-MCP（Model Context Protocol）工具，让 agent 直接在对话中完成**仓库查询、issue 管理、
-PR 创建与合并、代码审查、搜索**等常见操作。
+`repogate` is a GitHub workbench for coding agents: it wraps the GitHub REST API into a set of MCP (Model Context Protocol) tools, letting agents perform **repo queries, issue management, PR creation and merging, code review, search**, and other common operations directly in a conversation.
 
-- **零运行时依赖**：只用 Node.js 自带能力（`fetch`、`node:test`），无需安装任何包即可运行；
-- **标准 MCP stdio server**：任何支持 MCP 的客户端（dsh、Claude Code、Codex、opencode 等）都能接入；
-- **为 dsh 而生**：自带 dsh bundle（`cordis.patch.yml` + 自研桥接插件），`dsh plugin add` 一步接入，
-  工具自动出现在模型工具列表里（`mcp__repogate__*`）；
-- **双认证通道**：个人访问令牌（PAT）与 OAuth 设备授权流程，附令牌本地缓存；
-- **只读模式**：一键拦截全部写操作，适合只做调研的会话；
-- **错误可执行**：频率限制、令牌失效、权限不足、参数被拒……每条错误都带中文修复指引；
-- **输出为模型瘦身**：列表/搜索返回精简摘要而非完整 JSON，节省上下文 token。
+- **Zero runtime dependencies**: uses only built-in Node.js capabilities (`fetch`, `node:test`); no packages need to be installed to run;
+- **Standard MCP stdio server**: works with any MCP-capable client (dsh, Claude Code, Codex, opencode, etc.);
+- **Built for dsh**: ships a dsh bundle (`cordis.patch.yml` + a self-developed bridge plugin), connected with `dsh plugin add` in one step — tools appear automatically in the model's tool list (`mcp__repogate__*`);
+- **Dual auth channels**: personal access token (PAT) and OAuth device authorization flow, with local token caching;
+- **Read-only mode**: blocks all write operations with one switch, ideal for research-only sessions;
+- **Actionable errors**: rate limits, invalid tokens, insufficient permissions, rejected parameters — every error includes a Chinese fix guide;
+- **Slim output for models**: lists/search return concise summaries instead of full JSON, saving context tokens.
 
 ---
 
-## 快速开始
+## Quick Start
 
-### 方式 A：任意 MCP 客户端直接连接
+### Option A: connect directly from any MCP client
 
 ```bash
-# 需要 Node.js ≥ 18.17
-REPOGATE_TOKEN=ghp_你的令牌 node src/entry.js
+# requires Node.js ≥ 18.17
+REPOGATE_TOKEN=ghp_yourtoken node src/entry.js
 ```
 
-以 dsh 官方桥接为例的配置行（也适用于 Claude Code / Codex 的 MCP 配置）：
+Example config line using the official dsh bridge (also works in Claude Code / Codex MCP configs):
 
 ```yaml
-# dsh：插入到 $DSH_HOME/profiles/<profile>/cordis.patch.yml
+# dsh: insert into $DSH_HOME/profiles/<profile>/cordis.patch.yml
 - insert:
     - id: mcp-repogate
       name: '@deepseek-ai/dsh-mcp-client'
@@ -37,256 +34,254 @@ REPOGATE_TOKEN=ghp_你的令牌 node src/entry.js
         serverName: repogate
         transport: stdio
         command: node
-        args: ['/绝对路径/src/entry.js']
+        args: ['/absolute/path/to/src/entry.js']
         env:
           REPOGATE_TOKEN: !!js process.env.REPOGATE_TOKEN ?? ''
 ```
 
-连接后模型即可看到 `gh_issue_fetch`、`gh_pr_merge` 等 23 个工具
-（通用 MCP 客户端看到的是裸名；dsh 场景下带 `mcp__repogate__` 前缀，见下）。
+After connecting, the model sees 23 tools such as `gh_issue_fetch` and `gh_pr_merge`
+(generic MCP clients see bare names; under dsh they carry the `mcp__repogate__` prefix, see below).
 
-### 方式 B：作为 dsh 插件 bundle 安装（推荐）
+### Option B: install as a dsh plugin bundle (recommended)
 
-本插件已声明为 dsh bundle（`package.json` 的 `dsh.bundle` 字段）。在插件 checkout 目录执行：
+This plugin is declared as a dsh bundle (the `dsh.bundle` field in `package.json`). In the plugin checkout directory run:
 
 ```bash
 dsh plugin --profile web add .
 ```
 
-- 首次使用会自动初始化 `web` profile，并把本包加入 `dsh.profile.bundles`；
-- 包内 `cordis.patch.yml` 定义的 `repogate/bridge` 插件会在 dsh 进程内直接拉起本 MCP server，
-  完成握手后把全部工具注册进 `ctx.tools`，**无需手动改任何配置**；
-- 令牌默认从 dsh 进程的环境变量继承（`REPOGATE_TOKEN` 或 `GITHUB_TOKEN`）；
-- 卸载：`dsh plugin --profile web remove repogate`。
+- On first use it initializes the `web` profile automatically and adds this package to `dsh.profile.bundles`;
+- The `repogate/bridge` plugin defined in the package's `cordis.patch.yml` launches this MCP server directly inside the dsh process, and after the handshake registers all tools into `ctx.tools` — **no manual config changes needed**;
+- The token is inherited from the dsh process environment by default (`REPOGATE_TOKEN` or `GITHUB_TOKEN`);
+- Uninstall: `dsh plugin --profile web remove repogate`.
 
-安装后重启 dsh，在会话中即可直接说：
+After installing, restart dsh and simply say in a session:
 
-> “看看 octo/hello 仓库的 open issues，把 #12 关掉，然后在 #12 上评论一句‘已修复，等待验证’”
+> "Look at the open issues of the octo/hello repo, close #12, then comment 'fixed, waiting for verification' on #12."
 
-对应工具调用链：`mcp__repogate__gh_issue_browse` → `mcp__repogate__gh_issue_fetch` →
-`mcp__repogate__gh_issue_edit` → `mcp__repogate__gh_issue_respond`。
+The corresponding tool call chain: `mcp__repogate__gh_issue_browse` → `mcp__repogate__gh_issue_fetch` →
+`mcp__repogate__gh_issue_edit` → `mcp__repogate__gh_issue_respond`.
 
-> 备注：dsh 默认不启用任何 MCP 服务器（每条 server 命令都是在沙箱之外执行的受信代码），
-> 本插件的 bundle 行即"启用"动作本身；请只安装可信的插件。
+> Note: dsh does not enable any MCP server by default (each server command is trusted code executed outside the sandbox);
+> this plugin's bundle line is the "enable" action itself; only install trusted plugins.
 
 ---
 
-## 在 DSH 中安装
+## Installing in DSH
 
 ```bash
 dsh plugin --profile demo add github:JohnXu22786/github-mcp
 ```
 
-一行命令即可从 GitHub 仓库安装本插件到 dsh 的 `demo` profile，之后的接入、认证与生命周期细节见下节「dsh 接入说明」。
+A single command installs this plugin into the dsh `demo` profile from the GitHub repository. Integration, auth, and lifecycle details follow in the "dsh integration" section below.
 
 ---
 
-## dsh 接入说明（插件化 harness 如何加载它）
+## dsh Integration (how a plugin-style harness loads it)
 
-dsh 使用 Cordis 插件框架，组合单元是 **bundle**：一个 npm 包 + 一份 patch 层。加载链条如下：
+dsh uses the Cordis plugin framework; the unit of composition is a **bundle**: an npm package + a patch layer. The loading chain is as follows:
 
 ```
-package.json（dsh.bundle.patch → ./cordis.patch.yml）
-  └─ cordis.patch.yml 中的一行：name: 'repogate/bridge'
-       └─ src/bridge/plugin.js（Cordis 插件，inject: ['tools']）
-            ├─ 用 Node 自身 spawn 出 src/entry.js（MCP server 子进程，stdio）
-            ├─ 完成 initialize / tools/list 握手
-            └─ 每个工具以 mcp__repogate__<工具名> 注册进 ctx.tools
+package.json (dsh.bundle.patch → ./cordis.patch.yml)
+  └─ a line in cordis.patch.yml: name: 'repogate/bridge'
+       └─ src/bridge/plugin.js (Cordis plugin, inject: ['tools'])
+            ├─ spawns src/entry.js (the MCP server child process, stdio) using Node itself
+            ├─ completes the initialize / tools/list handshake
+            └─ registers each tool as mcp__repogate__<tool name> into ctx.tools
 ```
 
-- **工具接口**：模型可见的工具名 = `mcp__<serverName>__<原始工具名>`，`serverName` 默认 `repogate`；
-- **事件/技能**：本插件不注册事件或技能，只通过 `ctx.tools` 工具接口暴露能力；
-- **生命周期**：插件 `apply` 期间完成握手与注册，卸载时自动杀掉子进程并注销全部工具
-  （通过 `ctx.effect` 注册清理，热重载/卸载都不会残留）；
-- **两种桥接可选**：bundle 内置的自研桥接 `repogate/bridge`（零依赖、开箱即用）与
-  dsh 官方 `@deepseek-ai/dsh-mcp-client` 配置行（见 `examples/overlay-for-dsh.yml.example`），
-  工具命名与行为一致，任选其一，不要同时启用；
-- **环境变量**：dsh 会从 MCP 子进程环境过滤凭据类变量，因此官方桥接行需要把令牌写进
-  `env` 配置；自研桥接的子进程继承宿主环境，`REPOGATE_TOKEN` 会自动透传。
+- **Tool interface**: the tool name visible to the model = `mcp__<serverName>__<original tool name>`, `serverName` defaults to `repogate`;
+- **Events/skills**: this plugin registers no events or skills; it only exposes capabilities through the `ctx.tools` tool interface;
+- **Lifecycle**: handshake and registration happen during the plugin's `apply`; on unload it kills the child process and unregisters all tools automatically
+  (cleanup registered via `ctx.effect`, so hot reloads/unloads leave no residue);
+- **Two bridges to choose from**: the bundle's built-in bridge `repogate/bridge` (zero dependencies, works out of the box) and
+  the official dsh `@deepseek-ai/dsh-mcp-client` config line (see `examples/overlay-for-dsh.yml.example`);
+  the tools are named and behave identically — pick either one, do not enable both;
+- **Environment variables**: dsh filters credential-type variables from the MCP child process environment, so the official bridge line needs the token written into the
+  `env` config; the built-in bridge's child process inherits the host environment, so `REPOGATE_TOKEN` is passed through automatically.
 
-### 常见 dsh 问题
+### Common dsh issues
 
-| 现象 | 处理 |
+| Symptom | Treatment |
 | --- | --- |
-| 工具没出现在列表 | 检查 `cordis.patch.yml` 行是否生效（`dsh --profile <name> --dump-config` 看层），确认启动日志无报错 |
-| 401 令牌无效 | 检查 `env.REPOGATE_TOKEN` 配置；也可在会话中让模型调用 `mcp__repogate__gh_auth_login` 走 OAuth |
-| 想要只读 | bridge 行配置 `args: ['--read-only']`，或官方行给 args 追加 `--read-only` |
-| pnpm ≥10 拒绝 git 安装的 prepare 脚本 | 本插件是纯 JS、无构建脚本，不涉及；从 checkout 或 tarball 安装即可 |
+| Tools don't appear in the list | Check whether the `cordis.patch.yml` line took effect (`dsh --profile <name> --dump-config` to inspect layers), confirm no errors in the startup log |
+| 401 invalid token | Check the `env.REPOGATE_TOKEN` config; or ask the model to call `mcp__repogate__gh_auth_login` in the session to use OAuth |
+| Want read-only | Configure `args: ['--read-only']` on the bridge line, or append `--read-only` to the official line's args |
+| pnpm ≥10 rejects prepare scripts on git installs | This plugin is pure JS with no build script, so it's not affected; install from checkout or tarball |
 
 ---
 
-## 工具清单（23 个）
+## Tool List (23 tools)
 
-| 领域 | 工具 | 作用 | 写操作 |
+| Domain | Tool | Purpose | Write op |
 | --- | --- | --- | --- |
-| 仓库 | `gh_repo_fetch` | 仓库详情：默认分支、星标、语言、可见性 | |
-| 仓库 | `gh_repo_browse` | 列出用户/组织/自己的仓库（分页） | |
-| issue | `gh_issue_open` | 创建 issue（标题必填，可带标签/负责人） | ✔ |
-| issue | `gh_issue_fetch` | 查看 issue 完整信息 | |
-| issue | `gh_issue_browse` | 按状态/标签/负责人/创建者筛选（可排除 PR） | |
-| issue | `gh_issue_edit` | 改标题/正文/状态/负责人/标签 | ✔ |
-| issue | `gh_issue_respond` | 发表评论（PR 对话区通用） | ✔ |
-| PR | `gh_pr_open` | 创建拉取请求（head/base/草稿） | ✔ |
-| PR | `gh_pr_fetch` | PR 详情：可合并性、变更统计、审查数 | |
-| PR | `gh_pr_browse` | 按状态/分支筛选、排序、分页 | |
-| PR | `gh_pr_edit` | 改标题/正文/状态/草稿/目标分支 | ✔ |
-| PR | `gh_pr_merge` | 合并（方式/提交信息/删除来源分支） | ✔ |
-| 审查 | `gh_review_submit` | 提交整体审查：approve / request_changes / comment | ✔ |
-| 审查 | `gh_review_comment` | diff 行级评论（含区间评论） | ✔ |
-| 审查 | `gh_review_fetch` | 列出全部行级评论 | |
-| 审查 | `gh_review_browse` | 列出已提交的整体审查记录 | |
-| 搜索 | `gh_search_repos` | 按 GitHub 搜索语法搜仓库 | |
-| 搜索 | `gh_search_issues` | 搜 issue/PR（`type:pr` 区分） | |
-| 搜索 | `gh_search_code` | 搜代码（需令牌，返回文件命中） | |
-| 账户 | `gh_whoami` | 当前身份、令牌来源、只读模式、API 配额 | |
-| 认证 | `gh_auth_login` | 发起 OAuth 设备授权（需配置 clientId） | |
-| 认证 | `gh_auth_check` | 轮询一次授权结果 | |
-| 认证 | `gh_auth_logout` | 清除本地令牌缓存 | |
+| Repo | `gh_repo_fetch` | Repo details: default branch, stars, language, visibility | |
+| Repo | `gh_repo_browse` | List user/org/own repos (paginated) | |
+| Issue | `gh_issue_open` | Create an issue (title required, optional labels/assignee) | ✔ |
+| Issue | `gh_issue_fetch` | View full issue info | |
+| Issue | `gh_issue_browse` | Filter by state/labels/assignee/author (pages may exclude PRs) | |
+| Issue | `gh_issue_edit` | Edit title/body/state/assignee/labels | ✔ |
+| Issue | `gh_issue_respond` | Post a comment (works in PR threads too) | ✔ |
+| PR | `gh_pr_open` | Create a pull request (head/base/draft) | ✔ |
+| PR | `gh_pr_fetch` | PR details: mergeability, changed stats, review count | |
+| PR | `gh_pr_browse` | Filter by state/branch, sort, paginate | |
+| PR | `gh_pr_edit` | Edit title/body/state/draft/base branch | ✔ |
+| PR | `gh_pr_merge` | Merge (method/commit message/delete source branch) | ✔ |
+| Review | `gh_review_submit` | Submit a full review: approve / request_changes / comment | ✔ |
+| Review | `gh_review_comment` | Line-level diff comments (including range comments) | ✔ |
+| Review | `gh_review_fetch` | List all line-level comments | |
+| Review | `gh_review_browse` | List submitted full reviews | |
+| Search | `gh_search_repos` | Search repos with GitHub search syntax | |
+| Search | `gh_search_issues` | Search issues/PRs (`type:pr` distinguishes) | |
+| Search | `gh_search_code` | Search code (requires token, returns file hits) | |
+| Account | `gh_whoami` | Current identity, token source, read-only mode, API quota | |
+| Auth | `gh_auth_login` | Start OAuth device authorization (requires configured clientId) | |
+| Auth | `gh_auth_check` | Poll authorization result once | |
+| Auth | `gh_auth_logout` | Clear the local token cache | |
 
-所有工具的输入均为 JSON Schema（`name`/`description`/`inputSchema`），模型可自行发现；
-变更类工具在只读模式下会被拦截并返回明确提示。
+All tools take JSON Schema inputs (`name`/`description`/`inputSchema`) that models can discover on their own;
+write tools are intercepted with a clear message in read-only mode.
 
 ---
 
-## 配置
+## Configuration
 
-优先级：**命令行 > 环境变量 > 配置文件 > 默认值**。配置文件为 JSON，路径由 `--config`
-或 `REPOGATE_CONFIG` 指定，示例见 `examples/repogate.config.json.example`。
+Priority: **CLI flags > environment variables > config file > defaults**. The config file is JSON, its path given by `--config`
+or `REPOGATE_CONFIG`; see `examples/repogate.config.json.example`.
 
-| 配置项 | 环境变量 | 默认值 |
+| Config item | Environment variable | Default |
 | --- | --- | --- |
-| 访问令牌 | `REPOGATE_TOKEN`（兼容 `GITHUB_TOKEN` / `GH_TOKEN`） | 无 |
-| API 根地址（支持企业实例） | `REPOGATE_BASE_URL` | `https://api.github.com` |
-| 只读模式 | `REPOGATE_READ_ONLY`（`1/true/yes/on`） | `false` |
-| 单请求超时（毫秒） | `REPOGATE_TIMEOUT_MS` | `30000` |
-| OAuth Client ID | `REPOGATE_OAUTH_CLIENT_ID` | 无 |
-| OAuth 令牌缓存文件 | `REPOGATE_TOKEN_FILE` | 配置了 `oauth.clientId` 时默认 `~/.repogate/token.json` |
-| 配置文件路径 | `REPOGATE_CONFIG` | 无 |
-| 调试日志（stderr） | `REPOGATE_DEBUG` | `false` |
+| Access token | `REPOGATE_TOKEN` (also accepts `GITHUB_TOKEN` / `GH_TOKEN`) | none |
+| API base URL (enterprise instances) | `REPOGATE_BASE_URL` | `https://api.github.com` |
+| Read-only mode | `REPOGATE_READ_ONLY` (`1/true/yes/on`) | `false` |
+| Per-request timeout (ms) | `REPOGATE_TIMEOUT_MS` | `30000` |
+| OAuth Client ID | `REPOGATE_OAUTH_CLIENT_ID` | none |
+| OAuth token cache file | `REPOGATE_TOKEN_FILE` | `~/.repogate/token.json` when `oauth.clientId` is configured |
+| Config file path | `REPOGATE_CONFIG` | none |
+| Debug logging (stderr) | `REPOGATE_DEBUG` | `false` |
 
-命令行标志：`--config` `--token` `--read-only` `--base-url` `--timeout-ms`
-`--oauth-client-id` `--token-file` `--debug` `--version` `--help`。
+CLI flags: `--config` `--token` `--read-only` `--base-url` `--timeout-ms`
+`--oauth-client-id` `--token-file` `--debug` `--version` `--help`.
 
 ---
 
-## 认证
+## Authentication
 
-### 个人访问令牌（PAT）
+### Personal access token (PAT)
 
-在 GitHub 的 Developer settings 生成（fine-grained token 勾选所需仓库权限），然后任选其一：
+Generate one in GitHub's Developer settings (check the repo permissions needed on a fine-grained token), then choose any of:
 
 ```bash
-REPOGATE_TOKEN=ghp_xxx node src/entry.js          # 环境变量
-node src/entry.js --token ghp_xxx                 # 命令行
-node src/entry.js --config repogate.config.json   # 配置文件（token 字段）
+REPOGATE_TOKEN=ghp_xxx node src/entry.js          # environment variable
+node src/entry.js --token ghp_xxx                 # CLI flag
+node src/entry.js --config repogate.config.json   # config file (token field)
 ```
 
-令牌读取顺序：`--token` > `REPOGATE_TOKEN` > `GITHUB_TOKEN` > `GH_TOKEN` > 配置文件 > 缓存文件。
+Token resolution order: `--token` > `REPOGATE_TOKEN` > `GITHUB_TOKEN` > `GH_TOKEN` > config file > cache file.
 
-### OAuth 设备授权（免令牌交互登录）
+### OAuth device authorization (token-free interactive login)
 
-适合不想手搓令牌的场景。需要先有一个 GitHub App 的 Client ID（设备授权流程只需公开的 client_id）：
+For those who'd rather not assemble a token by hand. You first need a GitHub App's Client ID (the device flow only requires a public client_id):
 
-1. 配置 `oauth.clientId`（配置文件或 `REPOGATE_OAUTH_CLIENT_ID`）；
-2. 让模型调用 `gh_auth_login` → 返回授权地址与一次性代码；
-3. 用户浏览器打开地址、输入代码并确认；
-4. 模型调用 `gh_auth_check`（可多次，每次只查一次）→ 得到 `granted` 后令牌写入缓存文件，
-   之后所有工具自动可用；重启进程后缓存令牌依然生效；
-5. `gh_auth_logout` 清除缓存。
+1. Configure `oauth.clientId` (config file or `REPOGATE_OAUTH_CLIENT_ID`);
+2. Ask the model to call `gh_auth_login` → returns an authorization URL and a one-time code;
+3. The user opens the URL in a browser, enters the code, and confirms;
+4. The model calls `gh_auth_check` (may be called multiple times; each call checks once) → once `granted`, the token is written to the cache file,
+   and all tools become available; the cached token survives process restarts;
+5. `gh_auth_logout` clears the cache.
 
-> 注意：设备授权端点固定使用 github.com；企业实例（自定义 `baseUrl`）请使用 PAT。
-> 令牌缓存文件写入时带 0600 权限位；请勿把缓存文件提交进版本库。
+> Note: the device authorization endpoint always uses github.com; for enterprise instances (custom `baseUrl`) use a PAT.
+> The token cache file is written with 0600 permissions; do not commit the cache file to version control.
 
 ---
 
-## 只读模式
+## Read-only Mode
 
 ```bash
-node src/entry.js --read-only          # 或 REPOGATE_READ_ONLY=1
+node src/entry.js --read-only          # or REPOGATE_READ_ONLY=1
 ```
 
-开启后，8 个写工具（`gh_issue_open` / `gh_issue_edit` / `gh_issue_respond` /
-`gh_pr_open` / `gh_pr_edit` / `gh_pr_merge` / `gh_review_submit` / `gh_review_comment`）
-在参数校验之后被拦截，返回 `[readonly]` 错误并说明关闭方式；查询、搜索、认证类工具不受影响。
+When enabled, the 8 write tools (`gh_issue_open` / `gh_issue_edit` / `gh_issue_respond` /
+`gh_pr_open` / `gh_pr_edit` / `gh_pr_merge` / `gh_review_submit` / `gh_review_comment`)
+are intercepted after argument validation and return a `[readonly]` error explaining how to turn it off; query, search, and auth tools are unaffected.
 
 ---
 
-## 错误处理
+## Error Handling
 
-所有失败都以结构化错误返回（MCP `isError: true` + `structuredContent.error`），格式为
-`[错误码] 原因`，常见错误码与典型场景：
+All failures are returned as structured errors (MCP `isError: true` + `structuredContent.error`) in the form
+`[error code] reason`. Common error codes and typical scenarios:
 
-| 错误码 | 场景 | 指引 |
+| Error code | Scenario | Guide |
 | --- | --- | --- |
-| `auth` | 令牌缺失/失效（401） | 配置令牌或走 OAuth 设备授权 |
-| `ratelimit` | 配额用尽（403/429） | 提示重置时间或 Retry-After 秒数 |
-| `http` | 404/403/422/409 等 | 说明具体原因（不存在/无权限/参数被拒/冲突） |
-| `validation` | 参数校验失败 | 指明哪个参数不合法 |
-| `readonly` | 只读模式拦截写操作 | 说明如何关闭 |
-| `timeout` | 请求超时 | 建议调大 `timeoutMs` |
-| `network` | 网络层失败 | 检查网络与 `baseUrl` |
+| `auth` | Token missing/invalid (401) | Configure a token or use OAuth device authorization |
+| `ratelimit` | Quota exhausted (403/429) | Report reset time or Retry-After seconds |
+| `http` | 404/403/422/409 etc. | Explain the specific cause (not found/no permission/params rejected/conflict) |
+| `validation` | Argument validation failed | Point out which argument is invalid |
+| `readonly` | Read-only mode blocks a write | Explain how to disable |
+| `timeout` | Request timeout | Suggest increasing `timeoutMs` |
+| `network` | Network-layer failure | Check the network and `baseUrl` |
 
-网关层对 502/503/504 与网络抖动自动重试一次（仅幂等读请求，写请求不重试以避免副作用重复）；
-5xx 重试仍失败会返回 `http` 错误而不是静默失败。
+The gateway automatically retries once on 502/503/504 and network jitter (idempotent read requests only; writes are not retried to avoid duplicate side effects);
+if a 5xx still fails after retry, it returns an `http` error instead of failing silently.
 
 ---
 
-## 架构与目录
+## Architecture and Layout
 
 ```
 src/
-├── entry.js              入口：配置解析 → 装配 → 启动 stdio 会话
-├── protocol/             协议层（MCP over stdio，行分隔 JSON-RPC 2.0）
-│   ├── jsonrpc.js        消息编解码与分类
-│   ├── transport.js      stdin/stdout 读写循环（日志只走 stderr）
-│   └── engine.js         会话引擎：initialize / ping / tools/list / tools/call
-├── core/                 核心层
-│   ├── config.js         配置分层合并（flag > env > 配置文件 > 默认）
-│   ├── auth.js           凭据中枢：令牌解析 + OAuth 设备授权状态机 + 缓存
-│   ├── gateway.js        REST 网关：请求组装/重试/超时/状态码翻译
-│   └── errors.js         统一错误模型与可执行提示
-├── tools/                工具层
-│   ├── registry.js       注册表：参数校验（JSON Schema 子集）+ 只读门禁 + 分派
+├── entry.js              entry: config parsing → assembly → start the stdio session
+├── protocol/             protocol layer (MCP over stdio, line-delimited JSON-RPC 2.0)
+│   ├── jsonrpc.js        message encoding/decoding and classification
+│   ├── transport.js      stdin/stdout read/write loop (logs go to stderr only)
+│   └── engine.js         session engine: initialize / ping / tools/list / tools/call
+├── core/                 core layer
+│   ├── config.js         layered config merge (flag > env > config file > defaults)
+│   ├── auth.js           credential hub: token resolution + OAuth device auth state machine + cache
+│   ├── gateway.js        REST gateway: request assembly/retry/timeout/status-code mapping
+│   └── errors.js         unified error model with actionable hints
+├── tools/                tool layer
+│   ├── registry.js       registry: argument validation (JSON Schema subset) + read-only gate + dispatch
 │   ├── repo.js / issue.js / pull.js / review.js / search.js / account.js
-│   └── index.js          装配 23 个工具
-├── bridge/               dsh 接入
-│   ├── client.js         MCP stdio 客户端（initialize/list/call，取消与超时）
-│   └── plugin.js         Cordis 插件：spawn server 并把工具注册进 ctx.tools
-└── util/format.js        输出整形：实体摘要、分页判断、URL 构建
+│   └── index.js          assembles the 23 tools
+├── bridge/               dsh integration
+│   ├── client.js         MCP stdio client (initialize/list/call, cancellation and timeout)
+│   └── plugin.js         Cordis plugin: spawns the server and registers tools into ctx.tools
+└── util/format.js        output shaping: entity summaries, pagination detection, URL building
 
-test/                     测试（node:test，零依赖）
-├── helpers/              伪造 fetch 与本地 mock API 服务
-└── *.test.js             协议/网关/配置/认证/注册表/工具/端到端（121 项测试用例）
+test/                     tests (node:test, zero dependencies)
+├── helpers/              fake fetch and a local mock API service
+└── *.test.js             protocol/gateway/config/auth/registry/tool/end-to-end (121 test cases)
 ```
 
-设计要点：
+Design highlights:
 
-- **分层单向依赖**：协议层 → 核心层 → 工具层，工具不感知协议细节，协议不感知 API 细节；
-- **令牌按需解析**：OAuth 授权落地后无需重启即可生效（网关持有 tokenResolver 而非静态令牌）；
-- **同一份代码两头用**：`bridge/client.js` 与 server 共享同一套 JSON-RPC 词表，握手与调用逻辑一致。
+- **Layered one-way dependencies**: protocol layer → core layer → tool layer; tools don't know protocol details, and the protocol doesn't know API details;
+- **On-demand token resolution**: OAuth authorization takes effect after completion without restart (the gateway holds a tokenResolver rather than a static token);
+- **One codebase, both ends**: `bridge/client.js` and the server share the same JSON-RPC vocabulary, so handshake and call logic are consistent.
 
 ---
 
-## 开发与测试
+## Development and Testing
 
 ```bash
-node --test          # 运行全部 121 项测试（含真实子进程端到端）
+node --test          # run all 121 tests (including real child-process end-to-end)
 node src/entry.js --help
 ```
 
-测试覆盖：协议握手与错误路径（含未初始化会话拦截）、网关重试（仅幂等方法）与状态码翻译、
-OAuth 状态机全路径（含过期）、配置优先级、参数校验、只读门禁、全部 23 个工具的请求构造
-与输出整形、以及“真实子进程 + 本地 mock API”的端到端链路。
+Test coverage: protocol handshake and error paths (including interception of uninitialized sessions), gateway retry (idempotent methods only) and status-code mapping,
+the full OAuth state machine (including expiry), config priority, argument validation, the read-only gate, request construction and output shaping for all 23 tools,
+and an end-to-end chain of "real child process + local mock API".
 
-## 安全提示
+## Security Notes
 
-- 令牌等同账号权限，请勿写入日志、提交版本库或泄露给不可信对话；
-- dsh 场景下，MCP server 命令属于沙箱之外的受信代码，请从可信来源安装本插件；
-- 只读模式可显著降低误操作风险，仅供调研的会话建议开启。
+- A token has the same power as the account; do not write it into logs, commit it to version control, or leak it to untrusted conversations;
+- Under dsh, MCP server commands are trusted code outside the sandbox; install this plugin only from trusted sources;
+- Read-only mode significantly reduces the risk of misuse; research-only sessions are recommended to enable it.
 
 ---
 
-## 许可
+## License
 
 [MIT](LICENSE)
-
