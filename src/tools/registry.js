@@ -71,7 +71,9 @@ export function validateArgs(raw, schema, toolName) {
   }
   for (const [key, value] of Object.entries(raw)) {
     const spec = props[key]
-    if (spec) checkValue(value, spec, `${toolName}.${key}`)
+    // null 表示未提供（MCP 客户端常把缺省的可选参数序列化成 null）：
+    // 有必填约束的键已在上方校验，这里跳过即可
+    if (spec && value !== null) checkValue(value, spec, `${toolName}.${key}`)
   }
   return raw
 }

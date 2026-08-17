@@ -144,3 +144,20 @@ test('validateArgs 直接用法', () => {
   assert.deepEqual(validateArgs({ n: 5 }, schema, 't'), { n: 5 })
   assert.throws(() => validateArgs({}, schema, 't'), RepogateError)
 })
+
+test('validateArgs：可选键为 null 视为未提供（不触发类型校验）', () => {
+  const schema = {
+    type: 'object',
+    properties: {
+      query: { type: 'string', minLength: 1 },
+      order: { type: 'string', enum: ['asc', 'desc'] },
+      page: { type: 'integer', minimum: 1 },
+    },
+    required: ['query'],
+  }
+  assert.deepEqual(validateArgs({ query: 'x', order: null, page: null }, schema, 't'), { query: 'x', order: null, page: null })
+  // 必填键仍拒绝 null
+  assert.throws(() => validateArgs({ query: null }, schema, 't'), RepogateError)
+  // 非 null 的非法值仍被拦截
+  assert.throws(() => validateArgs({ query: 'x', order: 'diag' }, schema, 't'), RepogateError)
+})
