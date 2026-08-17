@@ -344,6 +344,22 @@ test('gh_search_issues：issue/PR 搜索', async () => {
   assert.equal(out.items[0].number, 1)
 })
 
+test('gh_search_repos：缺省 sort 时不下发 order（避免无效组合）', async () => {
+  const c = makeContext(capture(() => ok({ total_count: 0, items: [] })))
+  await c.registry.call('gh_search_repos', { query: 'octo', order: 'desc' }, c.services)
+  const u = new URL(c.last().url)
+  assert.equal(u.searchParams.get('sort'), null)
+  assert.equal(u.searchParams.get('order'), null)
+})
+
+test('gh_search_repos：sort=best-match 时同样剔除 order', async () => {
+  const c = makeContext(capture(() => ok({ total_count: 0, items: [] })))
+  await c.registry.call('gh_search_repos', { query: 'octo', sort: 'best-match', order: 'asc' }, c.services)
+  const u = new URL(c.last().url)
+  assert.equal(u.searchParams.get('sort'), null)
+  assert.equal(u.searchParams.get('order'), null)
+})
+
 test('gh_search_code：代码搜索', async () => {
   const c = makeContext(capture(() => ok({
     total_count: 1,
