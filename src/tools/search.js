@@ -29,8 +29,12 @@ function searchTool({ gateway, name, description, path, summarize, sorts }) {
     async execute(args) {
       const page = args.page ?? 1
       const perPage = args.perPage ?? 30
-      const query = { q: args.query, order: args.order }
-      if (args.sort !== undefined && args.sort !== 'best-match') query.sort = args.sort
+      const query = { q: args.query }
+      if (args.sort !== undefined && args.sort !== 'best-match') {
+        query.sort = args.sort
+        // order 只在显式指定 sort 时才有意义；缺省 sort（best-match）时不下发，避免无效组合
+        if (args.order !== undefined) query.order = args.order
+      }
       const { data, headers } = await gateway.request('GET', path, {
         query: { ...query, page, per_page: perPage },
       })
