@@ -360,6 +360,19 @@ test('gh_search_repos：sort=best-match 时同样剔除 order', async () => {
   assert.equal(u.searchParams.get('order'), null)
 })
 
+test('搜索 schema 与端点能力一致：代码搜索不暴露 sort/order', async () => {
+  const c = makeContext(capture(() => ok({ total_count: 0, items: [] })))
+  const byName = new Map(c.registry.list().map((t) => [t.name, t.inputSchema.properties]))
+  // 支持排序的端点同时暴露 sort 与 order
+  for (const name of ['gh_search_repos', 'gh_search_issues']) {
+    assert.ok(byName.get(name).sort, `${name} 应有 sort`)
+    assert.ok(byName.get(name).order, `${name} 应有 order`)
+  }
+  // 代码搜索不支持排序：schema 也不应承诺 order，避免误导调用方
+  assert.ok(!byName.get('gh_search_code').sort)
+  assert.ok(!byName.get('gh_search_code').order)
+})
+
 test('gh_search_code：代码搜索', async () => {
   const c = makeContext(capture(() => ok({
     total_count: 1,

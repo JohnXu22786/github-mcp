@@ -6,7 +6,7 @@
 import { summarizeIssue, summarizeRepo, summarizeCodeHit, parsePagination } from '../util/format.js'
 
 /**
- * 生成一个搜索工具。sorts 为空数组表示该端点不支持 sort 参数（代码搜索）。
+ * 生成一个搜索工具。sorts 为空数组表示该端点不支持 sort/order 参数（代码搜索）。
  */
 function searchTool({ gateway, name, description, path, summarize, sorts }) {
   const properties = {
@@ -15,12 +15,13 @@ function searchTool({ gateway, name, description, path, summarize, sorts }) {
       minLength: 1,
       description: 'GitHub 搜索语法，例如 "repo:octo/hello label:bug is:open"',
     },
-    order: { type: 'string', enum: ['asc', 'desc'], description: '排序方向，默认 desc' },
     page: { type: 'integer', minimum: 1, description: '页码，默认 1' },
     perPage: { type: 'integer', minimum: 1, maximum: 100, description: '每页数量，默认 30' },
   }
+  // order 只有在 sort 可用时才有意义（缺省 sort 会被剔除，见 execute）
   if (sorts.length > 0) {
     properties.sort = { type: 'string', enum: ['best-match', ...sorts], description: '排序字段；缺省为最相关' }
+    properties.order = { type: 'string', enum: ['asc', 'desc'], description: '排序方向，默认 desc' }
   }
   return {
     name,
