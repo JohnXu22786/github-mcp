@@ -195,7 +195,8 @@ export class CredentialHub {
         return { status: 'pending', retryAfterSeconds: pending.interval }
       case 'slow_down': {
         pending.interval += 5
-        this.writeCache({ pending })
+        // 保留已有缓存（例如已就绪的授权令牌），只更新 pending 字段
+        this.writeCache({ ...this.readCache(), pending })
         return { status: 'pending', retryAfterSeconds: pending.interval }
       }
       case 'expired_token':
