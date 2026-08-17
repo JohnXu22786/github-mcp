@@ -163,6 +163,28 @@ test('pollDeviceFlow：slow_down 会拉长间隔', async () => {
   }
 })
 
+test('pollDeviceFlow：slow_down 不覆盖已缓存的授权令牌', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'repogate-auth-'))
+  try {
+    const tokenFile = join(dir, 'tok.json')
+    let n = 0
+    const hub = makeHub({ oauthClientId: 'Iv1.x', tokenFile }, makeFakeFetch(async () => {
+      n += 1
+      return { status: 200, body: n === 1 ? deviceCodeBody : { error: 'slow_down' } }
+    }))
+    // 已就绪的授权令牌先写入缓存，再发起新授权流程并遇到 slow_down
+    hub.saveToken({ token: 'old-tok', scope: 'repo' })
+    await hub.startDeviceFlow()
+    const out = await hub.pollDeviceFlow()
+    assert.equal(out.status, 'pending')
+    assert.equal(out.retryAfterSeconds, 10)
+    assert.equal(hub.resolveToken(), 'old-tok')
+    assert.equal(seenSaved(hub, tokenFile), 'old-tok')
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('pollDeviceFlow：本地缓存过期（expiresAt 已过）→ expired', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'repogate-auth-'))
   try {
