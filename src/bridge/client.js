@@ -128,7 +128,7 @@ export class StdioClient {
       await this.request('initialize', {
         protocolVersion: '2025-06-18',
         capabilities: {},
-        clientInfo: { name: 'repogate-bridge', version: '1.0.0' },
+        clientInfo: { name: 'repogate-bridge', version: '1.0.1' },
       }, signal)
       const listed = await this.request('tools/list', {}, signal)
       this.tools = listed.tools ?? []

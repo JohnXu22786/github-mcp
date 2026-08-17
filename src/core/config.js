@@ -4,6 +4,7 @@
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { RepogateError, ErrorCodes } from './errors.js'
+import { VERSION } from './version.js'
 
 const DEFAULT_BASE_URL = 'https://api.github.com'
 const DEFAULT_TIMEOUT_MS = 30000
@@ -135,7 +136,7 @@ export function loadConfig(argv, env) {
     oauthClientId,
     tokenFile,
     debug: Boolean(debug),
-    userAgent: `repogate/1.0.0 (mcp; node ${process.version})`,
+    userAgent: `repogate/${VERSION} (mcp; node ${process.version})`,
     tokenSource: flags.token ? 'flag' : (envToken !== undefined ? 'env' : (file.token ? 'file' : 'none')),
     help: false,
     version: false,

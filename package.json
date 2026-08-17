@@ -1,6 +1,6 @@
 {
   "name": "repogate",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "面向 agent 的 GitHub 工作台：仓库、issue、PR 与代码审查的读写工具集，以 MCP stdio server 形式运行，零运行时依赖，可被 dsh 等插件化 harness 加载",
   "type": "module",
   "main": "src/entry.js",

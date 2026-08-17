@@ -1,6 +1,6 @@
 {
   "name": "repogate",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GitHub 开发者工作台：为 agent 提供仓库 / issue / PR / 代码审查 / 搜索的读写能力",
   "kind": "mcp-stdio",
   "entry": "src/entry.js",
