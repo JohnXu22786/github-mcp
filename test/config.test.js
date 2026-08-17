@@ -144,3 +144,15 @@ test('空字符串环境令牌视为未设置，继续回退', () => {
 test('未知参数报配置错误', () => {
   assert.throws(() => loadConfig(['--nope'], {}), RepogateError)
 })
+
+test('取值参数缺值/空值 → 配置错误', () => {
+  assert.throws(() => loadConfig(['--timeout-ms'], {}), RepogateError)
+  assert.throws(() => loadConfig(['--token', ''], {}), RepogateError)
+  assert.throws(() => loadConfig(['--config='], {}), RepogateError)
+  assert.throws(() => loadConfig(['--timeout-ms=abc'], {}), RepogateError)
+})
+
+test('布尔参数不接受取值 → 配置错误', () => {
+  assert.throws(() => loadConfig(['--read-only=true'], {}), RepogateError)
+  assert.throws(() => loadConfig(['--debug=x'], {}), RepogateError)
+})
