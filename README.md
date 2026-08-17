@@ -259,7 +259,7 @@ src/
 
 test/                     tests (node:test, zero dependencies)
 ├── helpers/              fake fetch and a local mock API service
-└── *.test.js             protocol/gateway/config/auth/registry/tool/end-to-end (121 test cases)
+└── *.test.js             protocol/gateway/config/auth/registry/tool/end-to-end (128 test cases)
 ```
 
 Design highlights:
@@ -273,7 +273,7 @@ Design highlights:
 ## Development and Testing
 
 ```bash
-node --test          # run all 121 tests (including real child-process end-to-end)
+node --test          # run all 128 tests (including real child-process end-to-end)
 node src/entry.js --help
 ```
 

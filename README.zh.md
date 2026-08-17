@@ -1,4 +1,4 @@
-﻿[English](README.md)
+[English](README.md)
 
 # repogate — GitHub 开发者工作台（agent 工具集）
 
@@ -256,7 +256,7 @@ src/
 
 test/                     测试（node:test，零依赖）
 ├── helpers/              伪造 fetch 与本地 mock API 服务
-└── *.test.js             协议/网关/配置/认证/注册表/工具/端到端（121 项测试用例）
+└── *.test.js             协议/网关/配置/认证/注册表/工具/端到端（128 项测试用例）
 ```
 
 设计要点：
@@ -270,7 +270,7 @@ test/                     测试（node:test，零依赖）
 ## 开发与测试
 
 ```bash
-node --test          # 运行全部 121 项测试（含真实子进程端到端）
+node --test          # 运行全部 128 项测试（含真实子进程端到端）
 node src/entry.js --help
 ```
 
