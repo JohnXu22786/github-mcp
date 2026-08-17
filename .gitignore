@@ -4,3 +4,16 @@ dist/
 __pycache__/
 *.pyc
 .DS_Store
+
+# 本地环境与敏感文件
+.env
+.env.*
+!.env.example
+*.log
+
+# OAuth 令牌缓存（README：勿提交令牌缓存到版本库）
+.repogate/
+
+# 编辑器
+.idea/
+.vscode/
