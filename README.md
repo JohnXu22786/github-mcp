@@ -177,6 +177,13 @@ node src/entry.js --token ghp_xxx                 # CLI flag
 node src/entry.js --config repogate.config.json   # config file (token field)
 ```
 
+Windows PowerShell 下环境变量写法：
+
+```powershell
+$env:REPOGATE_TOKEN = 'ghp_xxx'
+node src/entry.js
+```
+
 Token resolution order: `--token` > `REPOGATE_TOKEN` > `GITHUB_TOKEN` > `GH_TOKEN` > config file > cache file.
 
 ### OAuth device authorization (token-free interactive login)
